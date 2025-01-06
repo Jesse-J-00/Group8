@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghana Communication Technology University Student Attendance System</title>
+    <link rel="stylesheet" href="system.css">
+    
+    <style>
+        form {
+            margin: 0 auto;
+            max-width: 400px;
+        }
+        label, input, select, button {
+            display: block;
+            margin-bottom: 15px;
+        }
+        #errorMessage {
+            color: red;
+        }
+        #cameraPreview {
+            display: none;
+            max-width: 100%;
+            height: auto;
+        }
+        #fileList {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 100%;
+            display: none;
+        }
+        #fileList th, #fileList td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #fileList tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+
+    <script>
+        async function handleFileUpload(event) {
+            event.preventDefault(); // Prevent form submission
+            const timestamp = new Date().toLocaleString(); // Get current date and time
+            document.getElementById('fileUploadTimestamp').value = timestamp;
+
+            const videoElement = document.getElementById('cameraPreview');
+            videoElement.style.display = 'none'; // Hide the camera preview after upload
+        }
+
+        function openCamera() {
+            const videoElement = document.getElementById('cameraPreview');
+            const constraints = { video: true };
+
+            navigator.mediaDevices.getUserMedia(constraints)
+                .then(function (stream) {
+                    videoElement.srcObject = stream;
+                    videoElement.style.display = 'block';
+                })
+                .catch(function (error) {
+                    console.error('Error accessing camera:', error);
+                    alert('Could not access the camera.');
+                });
+        }
+
+        async function submitAttendance() {
+            const studentID = document.getElementById('studentID').value;
+            const password = document.getElementById('password').value;
+            const group = document.getElementById('group').value;
+            const fileUploadTimestamp = document.getElementById('fileUploadTimestamp').value;
+            const file = document.getElementById('file').files[0];
+
+            if (!studentID || !password || !group || !fileUploadTimestamp || !file) {
+                document.getElementById('errorMessage').textContent = "Please fill out all required fields.";
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('studentID', studentID);
+                formData.append('password', password);
+                formData.append('group', group);
+                formData.append('fileUploadTimestamp', fileUploadTimestamp);
+                formData.append('file', file);
+
+                const response = await fetch('upload.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert("Attendance submitted successfully!");
+                    document.getElementById('errorMessage').textContent = ""; // Clear error message
+                    document.getElementById('fileList').style.display = 'none'; // Hide the table
+                    document.getElementById('fileList').innerHTML = ''; // Clear table content
+                } else {
+                    throw new Error('Failed to submit attendance');
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('errorMessage').textContent = "An error occurred. Please try again.";
+            }
+        }
+
+        async function toggleFileList() {
+            const fileList = document.getElementById('fileList');
+            if (fileList.style.display === 'none') {
+                fileList.style.display = 'block';
+                updateFileList();
+            } else {
+                fileList.style.display = 'none';
+            }
+        }
+
+        async function updateFileList() {
+            try {
+                const response = await fetch('get_files.php'); // Fetch files from server
+                if (response.ok) {
+                    const fileList = await response.json();
+                    const fileTable = document.getElementById('fileList');
+                    fileTable.innerHTML = ''; // Clear existing rows
+                    fileList.forEach(file => {
+                        const row = fileTable.insertRow();
+                        const cell1 = row.insertCell(0);
+                        const cell2 = row.insertCell(1);
+                        cell1.textContent = file.name;
+                        cell2.textContent = file.uploaded_at;
+                    });
+                } else {
+                    throw new Error('Failed to retrieve files');
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+    </script>
+</head>
+<body>
+    <form class="attendance-form" id="attendanceForm" enctype="multipart/form-data">
+        <h2>Ghana Communication Technology University</h2>
+        <h3 align="center">Class Attendance System</h3>
+
+        <label for="studentID">Student ID:</label>
+        <input type="text" id="studentID" name="studentID" placeholder="Enter your Student ID" required>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" placeholder="Enter your Password" required>
+
+        <label for="group">Group:</label>
+        <select id="group" name="group" required>
+            <option value="">--Select Group--</option>
+            <option value="A">Group A</option>
+            <option value="B">Group B</option>
+            <option value="C">Group C</option>
+        </select>
+
+        <label for="fileUploadTimestamp">File Upload Time:</label>
+        <input type="text" id="fileUploadTimestamp" name="fileUploadTimestamp" readonly>
+
+        <h1>FaceID Verification</h1>
+        <button type="button" onclick="openCamera()">Choose file</button>
+        <video id="cameraPreview" autoplay></video>
+
+        <label for="file" onclick="openCamera()">Upload File:</label>
+        <input type="file" id="file" name="file" required onclick="openCamera()">
+
+        <button type="submit" onclick="handleFileUpload(event)">Upload</button>
+        <button type="button" onclick="submitAttendance()">Submit Attendance</button>
+
+        <p id="errorMessage"></p>
+    </form>
+
+   
+</body>
+</html>
